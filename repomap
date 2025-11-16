@@ -1,0 +1,29 @@
+OrchestraSynth/
+├─ CMakeLists.txt
+├─ README.md
+├─ scripts/
+│  └─ rebuild.sh
+└─ src/
+   ├─ App/
+   │  ├─ Main.cpp
+   │  ├─ OrchestraSynthApplication.h
+   │  └─ OrchestraSynthApplication.cpp
+   ├─ Engine/
+   │  └─ OrchestraSynthEngine.h
+   ├─ DSP/
+   │  ├─ Oversampler.h
+   │  ├─ ConvolutionEngine.h
+   │  └─ ImpulseResponseLoader.h
+   ├─ Systems/
+   │  ├─ PresetManager.h
+   │  ├─ PerformanceMonitor.h
+   │  ├─ Logger.h
+   │  └─ CrashReporter.h
+   ├─ Platform/
+   │  ├─ AVAudioEngineManager.h
+   │  └─ AVAudioEngineManager.mm
+   └─ Plugin/
+      ├─ PluginProcessor.h
+      ├─ PluginProcessor.cpp
+      ├─ PluginEditor.h
+      └─ PluginEditor.cpp
