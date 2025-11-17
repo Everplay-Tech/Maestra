@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "../UI/MixerComponent.h"
 
 class OrchestraSynthAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
@@ -14,7 +15,7 @@ public:
 
 private:
     OrchestraSynthAudioProcessor& processor;
-    juce::Label titleLabel;
+    MixerComponent mixer;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OrchestraSynthAudioProcessorEditor)
 };
