@@ -16,6 +16,7 @@ add_subdirectory(external/JUCE)
 
 # Shared sources used by both standalone and plugin
 set(ORCHESTRASYNTH_SHARED_SOURCES
+
     src/Engine/OrchestraSynthEngine.h
 
     src/DSP/Oversampler.h
@@ -29,6 +30,13 @@ set(ORCHESTRASYNTH_SHARED_SOURCES
 
     src/Platform/AVAudioEngineManager.h
     src/Platform/AVAudioEngineManager.mm
+
+    src/UI/SectionStripComponent.h
+    src/UI/SectionStripComponent.cpp
+    src/UI/PresetBar.h
+    src/UI/PresetBar.cpp
+    src/UI/MixerComponent.h
+    src/UI/MixerComponent.cpp
 )
 
 # ===========================
