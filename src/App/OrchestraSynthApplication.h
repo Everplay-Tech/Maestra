@@ -22,6 +22,14 @@ public:
     void anotherInstanceStarted (const juce::String&) override {}
 
 private:
+  class MixerComponent; // forward declaration
+
+class OrchestraSynthApplication : public juce::JUCEApplication
+{
+public:
+    // ... existing declarations ...
+
+private:
     class MainWindow : public juce::DocumentWindow
     {
     public:
@@ -32,6 +40,26 @@ private:
                     PerformanceMonitor& perfMon);
 
         void closeButtonPressed() override;
+
+    private:
+        std::unique_ptr<MixerComponent> mixerComponent;
+
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
+    };
+
+    std::unique_ptr<MainWindow> mainWindow;
+
+    // shared systems (unchanged)
+    Logger logger;
+    CrashReporter crashReporter { logger };
+    PerformanceMonitor perfMon { logger };
+    PresetManager presetManager;
+    OrchestraSynthEngine engine { presetManager, perfMon, logger };
+    AVAudioEngineManager avAudioManager;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OrchestraSynthApplication)
+};
+
 
     private:
         OrchestraSynthEngine& engine;
