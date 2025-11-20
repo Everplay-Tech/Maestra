@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+
 #include "../Engine/OrchestraSynthEngine.h"
 #include "../Systems/Logger.h"
 #include "../Systems/CrashReporter.h"
@@ -22,14 +23,8 @@ public:
     void anotherInstanceStarted (const juce::String&) override {}
 
 private:
-  class MixerComponent; // forward declaration
+    class MixerComponent; // forward declaration
 
-class OrchestraSynthApplication : public juce::JUCEApplication
-{
-public:
-    // ... existing declarations ...
-
-private:
     class MainWindow : public juce::DocumentWindow
     {
     public:
@@ -49,30 +44,7 @@ private:
 
     std::unique_ptr<MainWindow> mainWindow;
 
-    // shared systems (unchanged)
-    Logger logger;
-    CrashReporter crashReporter { logger };
-    PerformanceMonitor perfMon { logger };
-    PresetManager presetManager;
-    OrchestraSynthEngine engine { presetManager, perfMon, logger };
-    AVAudioEngineManager avAudioManager;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OrchestraSynthApplication)
-};
-
-
-    private:
-        OrchestraSynthEngine& engine;
-        PresetManager& presetManager;
-        Logger& logger;
-        PerformanceMonitor& perfMon;
-
-        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
-    };
-
-    std::unique_ptr<MainWindow> mainWindow;
-
-    // Shared systems
+    // shared systems
     Logger logger;
     CrashReporter crashReporter { logger };
     PerformanceMonitor perfMon { logger };
