@@ -12,15 +12,29 @@ class MixerComponent : public juce::Component
 {
 public:
     MixerComponent (OrchestraSynthEngine& engineIn,
-                    PresetManager& presetManagerIn);
+                    PresetManager& presetManagerIn,
+                    PerformanceMonitor& perfMonIn,
+                    Logger& loggerIn);
+
+    void paint (juce::Graphics& g) override;
+    void resized() override;
 
     // ...
 
 private:
     OrchestraSynthEngine& engine;
     PresetManager& presetManager;
+    PerformanceMonitor& perfMon;
+    Logger& logger;
 
     PresetBar presetBar;
+    SectionStripComponent stringsStrip;
+    SectionStripComponent brassStrip;
+    SectionStripComponent woodwindsStrip;
+    SectionStripComponent percussionStrip;
+    SectionStripComponent choirStrip;
 
     // ...
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MixerComponent)
 };
