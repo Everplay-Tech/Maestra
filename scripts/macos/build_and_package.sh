@@ -10,7 +10,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-"${ROOT_DIR}/build/macos-universal-release"}"
 GENERATOR="${GENERATOR:-}"  # If empty we'll auto-select
 CONFIG="${CONFIG:-Release}"
-JUCE_DIR="${JUCE_DIR:-"${ROOT_DIR}/external/JUCE"}"
 
 banner() {
     printf "\n[orchestrasynth] %s\n" "$1"
@@ -31,17 +30,7 @@ select_generator() {
     fi
 }
 
-if [[ ! -d "${JUCE_DIR}" ]]; then
-    cat >&2 <<MSG
-JUCE not found at ${JUCE_DIR}.
-Clone JUCE 7.0.12 into external/JUCE before running this script:
-
-  mkdir -p "${ROOT_DIR}/external" && \
-  git clone --branch 7.0.12 --depth 1 https://github.com/juce-framework/JUCE.git "${JUCE_DIR}"
-MSG
-    exit 1
-fi
-
+# JUCE is now automatically fetched by CMake's FetchContent
 mkdir -p "${BUILD_DIR}"
 SELECTED_GENERATOR="$(select_generator)"
 

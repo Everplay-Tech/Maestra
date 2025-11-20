@@ -14,8 +14,15 @@ if(APPLE)
     set(ORCHESTRASYNTH_PLUGIN_AU_DESTINATION "Plug-Ins/AU" CACHE STRING "Where to place AU bundle when installing")
 endif()
 
-# JUCE as subdirectory (user must clone JUCE 7.0.12 to external/JUCE)
-add_subdirectory(external/JUCE)
+# Automatically fetch JUCE 7.0.12 from GitHub
+include(FetchContent)
+FetchContent_Declare(
+    JUCE
+    GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+    GIT_TAG        7.0.12
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(JUCE)
 
 # Shared sources used by both standalone and plugin
 set(ORCHESTRASYNTH_SHARED_SOURCES
