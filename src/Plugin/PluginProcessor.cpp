@@ -2,6 +2,8 @@
 #include "PluginEditor.h"
 #include "../UI/MixerComponent.h"
 
+#include <exception>
+
 OrchestraSynthAudioProcessor::OrchestraSynthAudioProcessor()
     : AudioProcessor (BusesProperties()
                         .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
@@ -50,7 +52,22 @@ juce::AudioProcessorEditor* OrchestraSynthAudioProcessor::createEditor()
 
 std::unique_ptr<MixerComponent> OrchestraSynthAudioProcessor::createMixerComponent()
 {
-    return std::make_unique<MixerComponent> (engine, presetManager, perfMon, logger);
+    try
+    {
+        return std::make_unique<MixerComponent> (engine, presetManager, perfMon, logger);
+    }
+    catch (const std::exception& e)
+    {
+        logger.log (Logger::LogLevel::Error,
+                    "Failed to construct MixerComponent due to runtime error: " + juce::String (e.what()));
+    }
+    catch (...)
+    {
+        logger.log (Logger::LogLevel::Error,
+                    "Failed to construct MixerComponent due to an unknown error during JUCE UI initialisation.");
+    }
+
+    return nullptr;
 }
 
 void OrchestraSynthAudioProcessor::getStateInformation (juce::MemoryBlock& destData)

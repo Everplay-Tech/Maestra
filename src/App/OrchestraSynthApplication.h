@@ -9,7 +9,7 @@
 #include "../Systems/PresetManager.h"
 #include "../Platform/AVAudioEngineManager.h"
 
-class OrchestraSynthApplication : public juce::JUCEApplication
+class OrchestraSynthApplication final : public juce::JUCEApplication
 {
 public:
     const juce::String getApplicationName() override;
@@ -21,12 +21,14 @@ public:
     void initialise (const juce::String& commandLine) override;
     void shutdown() override;
 
-    void systemRequestedQuit() override           { quit(); }
-    void anotherInstanceStarted (const juce::String&) override {}
+    void systemRequestedQuit() override;
+    void anotherInstanceStarted (const juce::String&) override;
 
 private:
     class MainWindow;
     std::unique_ptr<MainWindow> mainWindow;
+
+    bool validatePlatformSupport();
 
     // shared systems
     Logger logger;
