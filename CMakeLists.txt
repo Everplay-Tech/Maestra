@@ -9,6 +9,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "Minimum OS X deployment version" FORCE)
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build universal binary" FORCE)
+    set(ORCHESTRASYNTH_APP_BUNDLE_DESTINATION "." CACHE STRING "Where to place the .app bundle when installing")
+    set(ORCHESTRASYNTH_PLUGIN_VST3_DESTINATION "Plug-Ins/VST3" CACHE STRING "Where to place VST3 bundle when installing")
+    set(ORCHESTRASYNTH_PLUGIN_AU_DESTINATION "Plug-Ins/AU" CACHE STRING "Where to place AU bundle when installing")
 endif()
 
 # JUCE as subdirectory (user must clone JUCE 7.0.12 to external/JUCE)
@@ -145,3 +148,34 @@ foreach(target OrchestraSynth OrchestraSynthPlugin)
         set_property(TARGET ${target} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
 endforeach()
+
+# ===========================
+# Installation + packaging
+# ===========================
+
+if(APPLE)
+    include(GNUInstallDirs)
+
+    # App bundle
+    install(TARGETS OrchestraSynth
+        BUNDLE DESTINATION "${ORCHESTRASYNTH_APP_BUNDLE_DESTINATION}"
+    )
+
+    # Plugin bundles (JUCE handles copying to build tree; here we define install destinations for packaging)
+    install(TARGETS OrchestraSynthPlugin
+        LIBRARY DESTINATION "${ORCHESTRASYNTH_PLUGIN_VST3_DESTINATION}"  # VST3 bundle
+        BUNDLE DESTINATION "${ORCHESTRASYNTH_PLUGIN_AU_DESTINATION}"      # AU component bundle
+    )
+
+    # CPack DragNDrop DMG configuration
+    set(CPACK_GENERATOR "DragNDrop")
+    set(CPACK_PACKAGE_NAME "OrchestraSynth")
+    set(CPACK_PACKAGE_VENDOR "YourCompany")
+    set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+    set(CPACK_PACKAGE_FILE_NAME "OrchestraSynth-${PROJECT_VERSION}-macOS-universal")
+    set(CPACK_DMG_FORMAT "UDZO")
+    set(CPACK_DMG_VOLUME_NAME "OrchestraSynth Installer")
+    set(CPACK_DMG_DS_STORE_SETUP_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/macos/dmg_setup.scpt")
+    set(CPACK_DMG_DISABLE_APPLICATIONS_SYMLINK ON)
+    include(CPack)
+endif()
