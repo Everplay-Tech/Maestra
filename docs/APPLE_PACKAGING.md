@@ -8,11 +8,7 @@ This guide describes how to produce a production-ready, Apple-compliant build of
 
 - **macOS 14+** with the latest Xcode Command Line Tools (or full Xcode) installed.
 - **CMake 3.22+** and optionally **Ninja** for faster builds.
-- **JUCE 7.0.12** cloned to `external/JUCE` (required by CMake). Clone command:
-  ```bash
-  mkdir -p external
-  git clone --branch 7.0.12 --depth 1 https://github.com/juce-framework/JUCE.git external/JUCE
-  ```
+- **Internet connection** for the first build (CMake will automatically download JUCE 7.0.12 via FetchContent).
 - **Apple Developer ID** and access to your team signing certificates for final distribution.
 
 ## 2. Fast path: build + DMG in one command
@@ -35,7 +31,6 @@ Environment variables you can override:
 - `BUILD_DIR` – custom build output directory (default: `build/macos-universal-release`).
 - `GENERATOR` – force a specific generator (e.g., `Xcode`).
 - `CONFIG` – build configuration (`Release` recommended for distribution).
-- `JUCE_DIR` – explicit JUCE path if not under `external/JUCE`.
 
 ## 3. Manual CMake invocation (if you need finer control)
 
@@ -113,7 +108,7 @@ xcrun stapler staple build/macos-universal-release/OrchestraSynth-0.1.0-macOS-un
 
 Release engineering teams should capture the following when reporting issues:
 - Full `cmake --system-information` output and `cmake --build` logs.
-- Exact SHA of the repo and JUCE submodule reference.
+- Exact SHA of the repo (JUCE 7.0.12 is automatically fetched by CMake).
 - macOS version and Xcode version.
 - Whether codesigning/notarization was performed before or after DMG assembly.
 

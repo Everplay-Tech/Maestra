@@ -13,19 +13,14 @@ This repository is organized for modern JUCE + CMake builds on current macOS too
 
 ---
 
-## 1. Cloning and JUCE setup
+## 1. Cloning and setup
 
 ```bash
 git clone <your-orchestra-synth-repo> OrchestraSynth
 cd OrchestraSynth
-
-# Clone JUCE 7.0.12 into external/JUCE
-mkdir -p external
-cd external
-git clone --branch 7.0.12 --depth 1 https://github.com/juce-framework/JUCE.git JUCE
-cd ..
-
 ```
+
+**Note:** JUCE 7.0.12 is automatically downloaded by CMake's FetchContent during the build process. No manual setup required.
 
 ## 2. macOS build + packaging (universal binary + DMG)
 
