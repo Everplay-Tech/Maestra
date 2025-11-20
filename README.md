@@ -73,15 +73,42 @@ This automated pipeline:
 
 # PKG installer creation
 ./scripts/macos/build_pkg.sh
-
-# Validation
-./scripts/macos/validate.sh
 ```
+
+### Automated Validation (NEW!)
+
+#### Quick Validation (Development)
+```bash
+# Technical validation (code signing, architecture, etc.)
+./scripts/macos/validate.sh
+
+# Functional validation (runtime, plugins, observability)
+./scripts/macos/functional_validate.sh
+```
+
+#### Comprehensive Pre-Release Validation
+```bash
+# Complete validation suite with detailed report
+./scripts/macos/pre_release_validate.sh
+
+# Review the validation report
+cat validation-report.txt
+```
+
+**50+ automated checks** replacing manual validation procedures:
+- ✅ Code signing and notarization
+- ✅ Universal binary architecture
+- ✅ Runtime functionality and plugin loading
+- ✅ Security hardening and compliance
+- ✅ Production readiness scoring
+
+See [docs/VALIDATION_PROCEDURES.md](docs/VALIDATION_PROCEDURES.md) for complete documentation.
 
 ---
 
 ## Documentation
 
+- **Validation Procedures:** [docs/VALIDATION_PROCEDURES.md](docs/VALIDATION_PROCEDURES.md) - **NEW!** Automated validation and production readiness
 - **Production Packaging:** [docs/PRODUCTION_PACKAGING.md](docs/PRODUCTION_PACKAGING.md) - Complete guide for enterprise deployment
 - **Apple Packaging:** [docs/APPLE_PACKAGING.md](docs/APPLE_PACKAGING.md) - Notarization and verification
 - **Operations Manual:** [docs/OPERATIONS_MANUAL.md](docs/OPERATIONS_MANUAL.md) - Development workflow and troubleshooting
@@ -99,16 +126,26 @@ This automated pipeline:
 
 ```
 OrchestraSynth/
-├── src/                    # Source code
-├── config/                 # Production configuration
-│   ├── build.env.example  # Environment template
-│   └── entitlements/      # macOS entitlements
-├── scripts/macos/         # Build automation
-│   ├── production_build.sh
-│   ├── codesign.sh
-│   ├── notarize.sh
-│   ├── build_pkg.sh
-│   └── validate.sh
-├── docs/                  # Documentation
-└── CMakeLists.txt        # CMake build configuration
+├── src/                          # Source code
+├── config/                       # Production configuration
+│   ├── build.env.example        # Environment template
+│   └── entitlements/            # macOS entitlements
+├── scripts/macos/               # Build automation
+│   ├── build_and_package.sh    # Development build
+│   ├── production_build.sh     # Production build pipeline
+│   ├── codesign.sh             # Code signing
+│   ├── notarize.sh             # Apple notarization
+│   ├── build_pkg.sh            # PKG installer creation
+│   ├── validate.sh             # Technical validation
+│   ├── functional_validate.sh  # Functional validation (NEW!)
+│   └── pre_release_validate.sh # Pre-release validation suite (NEW!)
+├── .github/workflows/           # CI/CD automation (NEW!)
+│   ├── validation.yml          # Automated validation
+│   └── release.yml             # Release automation
+├── docs/                        # Documentation
+│   ├── VALIDATION_PROCEDURES.md # Validation guide (NEW!)
+│   ├── PRODUCTION_PACKAGING.md
+│   ├── APPLE_PACKAGING.md
+│   └── OPERATIONS_MANUAL.md
+└── CMakeLists.txt              # CMake build configuration
 ```
