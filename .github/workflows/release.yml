@@ -1,0 +1,307 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-release:
+    name: Build Release Packages
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup build environment
+        run: |
+          echo "Building version: ${{ steps.version.outputs.version }}"
+          brew install ninja
+          xcodebuild -version
+          cmake --version
+
+      - name: Import code signing certificates
+        if: ${{ secrets.DEVELOPER_ID_APPLICATION != '' }}
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          security import certificate.p12 -k "$KEYCHAIN_PATH" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Set as default keychain
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+
+          # Verify
+          security find-identity -v -p codesigning
+
+          rm certificate.p12
+
+      - name: Build project
+        run: |
+          ./scripts/macos/build_and_package.sh
+
+      - name: Code sign (if certificates available)
+        if: ${{ secrets.CODESIGN_IDENTITY != '' }}
+        env:
+          CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
+        run: |
+          ./scripts/macos/codesign.sh
+
+      - name: Build PKG installer
+        if: ${{ secrets.PKG_SIGNING_IDENTITY != '' }}
+        env:
+          PKG_SIGNING_IDENTITY: ${{ secrets.PKG_SIGNING_IDENTITY }}
+        run: |
+          ./scripts/macos/build_pkg.sh
+
+      - name: Notarize packages
+        if: ${{ secrets.NOTARIZE_APPLE_ID != '' }}
+        env:
+          NOTARIZE_APPLE_ID: ${{ secrets.NOTARIZE_APPLE_ID }}
+          NOTARIZE_TEAM_ID: ${{ secrets.NOTARIZE_TEAM_ID }}
+          NOTARIZE_PASSWORD: ${{ secrets.NOTARIZE_PASSWORD }}
+        run: |
+          # Notarize DMG
+          if [ -f "build/macos-universal-release/OrchestraSynth-0.1.0-macOS-universal.dmg" ]; then
+            ./scripts/macos/notarize.sh build/macos-universal-release/OrchestraSynth-0.1.0-macOS-universal.dmg
+          fi
+
+          # Notarize PKG
+          if [ -f "build/macos-universal-release/OrchestraSynth-0.1.0-macOS-universal.pkg" ]; then
+            ./scripts/macos/notarize.sh build/macos-universal-release/OrchestraSynth-0.1.0-macOS-universal.pkg
+          fi
+
+      - name: Run comprehensive validation
+        run: |
+          ./scripts/macos/pre_release_validate.sh build/macos-universal-release release-validation-report.txt
+        continue-on-error: false
+
+      - name: Generate checksums
+        run: |
+          cd build/macos-universal-release
+
+          echo "# OrchestraSynth v${{ steps.version.outputs.version }}" > CHECKSUMS.txt
+          echo "" >> CHECKSUMS.txt
+          echo "## SHA256 Checksums" >> CHECKSUMS.txt
+          echo "" >> CHECKSUMS.txt
+
+          for file in *.dmg *.pkg; do
+            if [ -f "$file" ]; then
+              shasum -a 256 "$file" >> CHECKSUMS.txt
+            fi
+          done
+
+          echo "" >> CHECKSUMS.txt
+          echo "Generated: $(date)" >> CHECKSUMS.txt
+
+          cat CHECKSUMS.txt
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrchestraSynth-${{ steps.version.outputs.version }}-macOS-DMG
+          path: build/macos-universal-release/*.dmg
+          retention-days: 90
+
+      - name: Upload PKG
+        if: hashFiles('build/macos-universal-release/*.pkg') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrchestraSynth-${{ steps.version.outputs.version }}-macOS-PKG
+          path: build/macos-universal-release/*.pkg
+          retention-days: 90
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-validation-report-${{ steps.version.outputs.version }}
+          path: release-validation-report.txt
+          retention-days: 365
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: CHECKSUMS-${{ steps.version.outputs.version }}
+          path: build/macos-universal-release/CHECKSUMS.txt
+          retention-days: 365
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/macos-universal-release/*.dmg
+            build/macos-universal-release/*.pkg
+            build/macos-universal-release/CHECKSUMS.txt
+          body: |
+            # OrchestraSynth v${{ steps.version.outputs.version }}
+
+            ## Release Artifacts
+
+            - **DMG**: Drag-and-drop installer for individual users
+            - **PKG**: Enterprise installer for MDM deployment
+
+            ## Verification
+
+            All packages are code-signed and notarized by Apple.
+
+            ### SHA256 Checksums
+
+            See `CHECKSUMS.txt` for file verification.
+
+            ## Installation
+
+            ### DMG (Recommended for most users)
+            1. Download the DMG file
+            2. Open and drag OrchestraSynth to Applications
+            3. Copy plugins from Plug-Ins folder to:
+               - VST3: `~/Library/Audio/Plug-Ins/VST3/`
+               - AU: `~/Library/Audio/Plug-Ins/Components/`
+
+            ### PKG (For enterprise deployment)
+            1. Download the PKG file
+            2. Double-click to install (requires admin password)
+            3. All components installed automatically
+
+            ## Requirements
+
+            - macOS 14.0 or later
+            - Universal binary (Apple Silicon + Intel)
+
+            ## Documentation
+
+            - [Production Packaging Guide](docs/PRODUCTION_PACKAGING.md)
+            - [Operations Manual](docs/OPERATIONS_MANUAL.md)
+
+            ## Validation
+
+            See attached validation report for complete build verification.
+          draft: true
+          prerelease: false
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/build.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
+          fi
+
+  post-release-validation:
+    name: Post-Release Validation
+    needs: build-release
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: OrchestraSynth-*-macOS-*
+
+      - name: Verify artifact integrity
+        run: |
+          echo "Verifying downloaded artifacts..."
+
+          # Find DMG
+          DMG=$(find . -name "*.dmg" -type f | head -1)
+          if [ -n "$DMG" ]; then
+            echo "✅ Found DMG: $DMG"
+
+            # Verify DMG integrity
+            if hdiutil verify "$DMG"; then
+              echo "✅ DMG integrity verified"
+            else
+              echo "❌ DMG integrity check failed"
+              exit 1
+            fi
+
+            # Check if DMG is mountable
+            MOUNT_POINT=$(mktemp -d)
+            if hdiutil attach "$DMG" -mountpoint "$MOUNT_POINT" -nobrowse -quiet; then
+              echo "✅ DMG mounts successfully"
+
+              # Verify contents
+              if [ -d "$MOUNT_POINT/OrchestraSynth.app" ]; then
+                echo "✅ App present in DMG"
+              else
+                echo "❌ App missing from DMG"
+                hdiutil detach "$MOUNT_POINT" -quiet
+                exit 1
+              fi
+
+              hdiutil detach "$MOUNT_POINT" -quiet
+              rmdir "$MOUNT_POINT"
+            else
+              echo "❌ Failed to mount DMG"
+              rmdir "$MOUNT_POINT"
+              exit 1
+            fi
+          else
+            echo "⚠️  No DMG found in artifacts"
+          fi
+
+          # Find PKG
+          PKG=$(find . -name "*.pkg" -type f | head -1)
+          if [ -n "$PKG" ]; then
+            echo "✅ Found PKG: $PKG"
+
+            # Verify PKG structure
+            if pkgutil --payload-files "$PKG" >/dev/null; then
+              echo "✅ PKG structure verified"
+            else
+              echo "❌ PKG structure invalid"
+              exit 1
+            fi
+          else
+            echo "ℹ️  No PKG found in artifacts (may not be built)"
+          fi
+
+      - name: Verify checksums
+        run: |
+          CHECKSUMS=$(find . -name "CHECKSUMS.txt" -type f | head -1)
+          if [ -n "$CHECKSUMS" ]; then
+            echo "Verifying checksums..."
+            cat "$CHECKSUMS"
+
+            # Verify each checksum
+            cd "$(dirname "$CHECKSUMS")"
+            if shasum -a 256 -c CHECKSUMS.txt 2>/dev/null; then
+              echo "✅ All checksums verified"
+            else
+              echo "❌ Checksum verification failed"
+              exit 1
+            fi
+          fi

@@ -1,0 +1,261 @@
+name: Build Validation
+
+on:
+  push:
+    branches: [ main, develop, 'claude/**' ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  validate-build:
+    name: Validate macOS Build
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup build environment
+        run: |
+          echo "Setting up build environment..."
+          xcodebuild -version
+          cmake --version
+          sw_vers
+
+      - name: Install build dependencies
+        run: |
+          # Install ninja for faster builds
+          brew install ninja
+
+      - name: Build project
+        run: |
+          echo "Building OrchestraSynth..."
+          ./scripts/macos/build_and_package.sh
+
+      - name: Run technical validation
+        run: |
+          echo "Running technical validation..."
+          ./scripts/macos/validate.sh
+
+      - name: Run functional validation
+        run: |
+          echo "Running functional validation..."
+          ./scripts/macos/functional_validate.sh
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-${{ github.sha }}
+          path: |
+            build/macos-universal-release/OrchestraSynth.app
+            build/macos-universal-release/Plug-Ins/
+            build/macos-universal-release/*.dmg
+          retention-days: 7
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-logs-${{ github.sha }}
+          path: |
+            validation-report.txt
+          retention-days: 30
+
+  pre-release-validation:
+    name: Pre-Release Validation Suite
+    runs-on: macos-14
+    timeout-minutes: 60
+    # Only run on main branch or release tags
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        run: |
+          brew install ninja
+
+      - name: Build project
+        run: |
+          ./scripts/macos/build_and_package.sh
+
+      - name: Run comprehensive pre-release validation
+        id: validation
+        run: |
+          ./scripts/macos/pre_release_validate.sh build/macos-universal-release validation-report-${{ github.sha }}.txt
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-release-validation-${{ github.sha }}
+          path: validation-report-${{ github.sha }}.txt
+          retention-days: 90
+
+      - name: Comment validation results on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportFile = 'validation-report-${{ github.sha }}.txt';
+
+            if (fs.existsSync(reportFile)) {
+              const report = fs.readFileSync(reportFile, 'utf8');
+              const summary = report.split('FINAL SUMMARY')[1]?.split('═══════════════════')[0] || 'See full report in artifacts';
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## Pre-Release Validation Report\n\n\`\`\`\n${summary}\n\`\`\`\n\nFull report available in workflow artifacts.`
+              });
+            }
+
+      - name: Fail if validation errors
+        if: steps.validation.outcome == 'failure'
+        run: |
+          echo "❌ Pre-release validation failed"
+          exit 1
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check documentation completeness
+        run: |
+          echo "Checking required documentation..."
+          MISSING=0
+
+          REQUIRED_DOCS=(
+            "README.md"
+            "docs/OPERATIONS_MANUAL.md"
+            "docs/PRODUCTION_PACKAGING.md"
+            "docs/APPLE_PACKAGING.md"
+          )
+
+          for doc in "${REQUIRED_DOCS[@]}"; do
+            if [ ! -f "$doc" ]; then
+              echo "❌ Missing: $doc"
+              MISSING=$((MISSING + 1))
+            else
+              echo "✅ Found: $doc"
+            fi
+          done
+
+          if [ $MISSING -gt 0 ]; then
+            echo "❌ $MISSING required documentation file(s) missing"
+            exit 1
+          fi
+
+          echo "✅ All required documentation present"
+
+      - name: Validate build configuration
+        run: |
+          echo "Validating build configuration..."
+
+          if [ ! -f "config/build.env.example" ]; then
+            echo "❌ Build configuration template missing"
+            exit 1
+          fi
+
+          if [ ! -f "config/entitlements/app.entitlements" ]; then
+            echo "❌ App entitlements missing"
+            exit 1
+          fi
+
+          if [ ! -f "config/entitlements/plugin.entitlements" ]; then
+            echo "❌ Plugin entitlements missing"
+            exit 1
+          fi
+
+          echo "✅ Build configuration is valid"
+
+      - name: Check build scripts
+        run: |
+          echo "Validating build scripts..."
+
+          REQUIRED_SCRIPTS=(
+            "scripts/macos/build_and_package.sh"
+            "scripts/macos/production_build.sh"
+            "scripts/macos/codesign.sh"
+            "scripts/macos/notarize.sh"
+            "scripts/macos/build_pkg.sh"
+            "scripts/macos/validate.sh"
+            "scripts/macos/functional_validate.sh"
+            "scripts/macos/pre_release_validate.sh"
+          )
+
+          MISSING=0
+          for script in "${REQUIRED_SCRIPTS[@]}"; do
+            if [ ! -f "$script" ]; then
+              echo "❌ Missing: $script"
+              MISSING=$((MISSING + 1))
+            elif [ ! -x "$script" ]; then
+              echo "⚠️  Not executable: $script"
+            else
+              echo "✅ Found: $script"
+            fi
+          done
+
+          if [ $MISSING -gt 0 ]; then
+            echo "❌ $MISSING required script(s) missing"
+            exit 1
+          fi
+
+          echo "✅ All build scripts present"
+
+  security-scan:
+    name: Security Scan
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for sensitive data
+        run: |
+          echo "Scanning for sensitive data..."
+
+          # Check for common sensitive patterns
+          if grep -r "PRIVATE KEY" --exclude-dir=.git --exclude-dir=build .; then
+            echo "❌ Private keys detected in repository"
+            exit 1
+          fi
+
+          if grep -r "password.*=" --exclude-dir=.git --exclude-dir=build --include="*.sh" --include="*.env" . | grep -v "NOTARIZE_PASSWORD\|AC_PASSWORD\|example"; then
+            echo "⚠️  Potential passwords detected - please review"
+          fi
+
+          echo "✅ No obvious sensitive data detected"
+
+      - name: Verify .gitignore
+        run: |
+          echo "Checking .gitignore configuration..."
+
+          REQUIRED_IGNORES=(
+            "build/"
+            "config/build.env"
+            "*.p12"
+            "*.keychain"
+          )
+
+          for pattern in "${REQUIRED_IGNORES[@]}"; do
+            if grep -q "$pattern" .gitignore; then
+              echo "✅ Ignoring: $pattern"
+            else
+              echo "⚠️  Not ignored: $pattern"
+            fi
+          done
