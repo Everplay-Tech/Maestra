@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Hardened Runtime Entitlements -->
+
+    <!-- Required for audio processing -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+
+    <!-- Required for MIDI device access -->
+    <key>com.apple.security.device.usb</key>
+    <true/>
+
+    <!-- Allow JIT compilation for audio DSP optimization (if needed) -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <false/>
+
+    <!-- Allow loading unsigned executable memory (typically false for production) -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <false/>
+
+    <!-- Allow DYLD environment variables (typically false for production) -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <false/>
+
+    <!-- Disable library validation for plugin hosts (may be needed for third-party plugins) -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <false/>
+
+    <!-- Network client access (if analytics or license checking needed) -->
+    <key>com.apple.security.network.client</key>
+    <false/>
+
+    <!-- Network server access (if hosting services) -->
+    <key>com.apple.security.network.server</key>
+    <false/>
+
+    <!-- Camera access (typically not needed for audio apps) -->
+    <key>com.apple.security.device.camera</key>
+    <false/>
+
+    <!-- Print access -->
+    <key>com.apple.security.print</key>
+    <false/>
+
+    <!-- Bluetooth access (for MIDI over Bluetooth) -->
+    <key>com.apple.security.device.bluetooth</key>
+    <true/>
+
+    <!-- User selected file access (read-only) -->
+    <key>com.apple.security.files.user-selected.read-only</key>
+    <true/>
+
+    <!-- User selected file access (read-write) for presets/projects -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+
+    <!-- Downloads folder access (for preset installation) -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+
+    <!-- Music folder access (for sample libraries) -->
+    <key>com.apple.security.assets.music.read-only</key>
+    <true/>
+</dict>
+</plist>
