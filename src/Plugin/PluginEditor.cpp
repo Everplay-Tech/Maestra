@@ -5,6 +5,7 @@ OrchestraSynthAudioProcessorEditor::OrchestraSynthAudioProcessorEditor (Orchestr
       processor (p)
 {
     mixer = processor.createMixerComponent();
+    jassert (mixer != nullptr);
     addAndMakeVisible (*mixer);
     setSize (900, 600);
 }
