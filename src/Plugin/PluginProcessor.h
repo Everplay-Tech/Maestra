@@ -35,6 +35,8 @@ public:
 
     OrchestraSynthEngine& getEngine() noexcept                             { return engine; }
     PresetManager& getPresetManager() noexcept                             { return presetManager; }
+    PerformanceMonitor& getPerformanceMonitor() noexcept                   { return perfMon; }
+    Logger& getLogger() noexcept                                           { return logger; }
 
 private:
     Logger logger;
