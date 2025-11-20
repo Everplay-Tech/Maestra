@@ -51,6 +51,15 @@ bool OrchestraSynthApplication::moreThanOneInstanceAllowed()
     return true;
 }
 
+void OrchestraSynthApplication::systemRequestedQuit()
+{
+    quit();
+}
+
+void OrchestraSynthApplication::anotherInstanceStarted (const juce::String&)
+{
+}
+
 void OrchestraSynthApplication::initialise (const juce::String&)
 {
     logger.log (Logger::LogLevel::Info, "OrchestraSynth starting up");

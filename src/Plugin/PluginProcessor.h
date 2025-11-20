@@ -40,7 +40,7 @@ public:
     PerformanceMonitor& getPerformanceMonitor() noexcept                   { return perfMon; }
     Logger& getLogger() noexcept                                           { return logger; }
 
-    std::unique_ptr<MixerComponent> createMixerComponent();
+    [[nodiscard]] std::unique_ptr<MixerComponent> createMixerComponent();
 
 private:
     Logger logger;
