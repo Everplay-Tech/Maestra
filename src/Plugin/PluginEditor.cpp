@@ -2,12 +2,11 @@
 
 OrchestraSynthAudioProcessorEditor::OrchestraSynthAudioProcessorEditor (OrchestraSynthAudioProcessor& p)
     : AudioProcessorEditor (&p),
-      processor (p),
-      mixer (processor.getEngine(),
-             processor.getPresetManager(),
-             processor.getPerformanceMonitor(),
-             processor.getLogger())
+      processor (p)
 {
+    mixer = processor.createMixerComponent();
+    addAndMakeVisible (*mixer);
+    setSize (900, 600);
 }
 
 void OrchestraSynthAudioProcessorEditor::paint (juce::Graphics& g)
@@ -17,5 +16,6 @@ void OrchestraSynthAudioProcessorEditor::paint (juce::Graphics& g)
 
 void OrchestraSynthAudioProcessorEditor::resized()
 {
-    mixer.setBounds (getLocalBounds());
+    if (mixer != nullptr)
+        mixer->setBounds (getLocalBounds());
 }

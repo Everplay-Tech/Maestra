@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "../UI/MixerComponent.h"
 
 OrchestraSynthAudioProcessor::OrchestraSynthAudioProcessor()
     : AudioProcessor (BusesProperties()
@@ -45,6 +46,11 @@ void OrchestraSynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
 juce::AudioProcessorEditor* OrchestraSynthAudioProcessor::createEditor()
 {
     return new OrchestraSynthAudioProcessorEditor (*this);
+}
+
+std::unique_ptr<MixerComponent> OrchestraSynthAudioProcessor::createMixerComponent()
+{
+    return std::make_unique<MixerComponent> (engine, presetManager, perfMon, logger);
 }
 
 void OrchestraSynthAudioProcessor::getStateInformation (juce::MemoryBlock& destData)

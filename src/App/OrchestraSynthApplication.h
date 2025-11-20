@@ -12,9 +12,11 @@
 class OrchestraSynthApplication : public juce::JUCEApplication
 {
 public:
-    const juce::String getApplicationName() override          { return "OrchestraSynth"; }
-    const juce::String getApplicationVersion() override       { return "0.1.0"; }
-    bool moreThanOneInstanceAllowed() override                { return true; }
+    const juce::String getApplicationName() override;
+    const juce::String getApplicationVersion() override;
+    bool moreThanOneInstanceAllowed() override;
+
+    ~OrchestraSynthApplication() override;
 
     void initialise (const juce::String& commandLine) override;
     void shutdown() override;
@@ -23,25 +25,7 @@ public:
     void anotherInstanceStarted (const juce::String&) override {}
 
 private:
-    class MixerComponent; // forward declaration
-
-    class MainWindow : public juce::DocumentWindow
-    {
-    public:
-        MainWindow (juce::String name,
-                    OrchestraSynthEngine& engine,
-                    PresetManager& presetManager,
-                    Logger& logger,
-                    PerformanceMonitor& perfMon);
-
-        void closeButtonPressed() override;
-
-    private:
-        std::unique_ptr<MixerComponent> mixerComponent;
-
-        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
-    };
-
+    class MainWindow;
     std::unique_ptr<MainWindow> mainWindow;
 
     // shared systems

@@ -6,6 +6,8 @@
 #include "../Systems/Logger.h"
 #include "../Systems/PerformanceMonitor.h"
 
+class MixerComponent;
+
 class OrchestraSynthAudioProcessor  : public juce::AudioProcessor
 {
 public:
@@ -37,6 +39,8 @@ public:
     PresetManager& getPresetManager() noexcept                             { return presetManager; }
     PerformanceMonitor& getPerformanceMonitor() noexcept                   { return perfMon; }
     Logger& getLogger() noexcept                                           { return logger; }
+
+    std::unique_ptr<MixerComponent> createMixerComponent();
 
 private:
     Logger logger;

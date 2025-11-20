@@ -15,7 +15,7 @@ public:
 
 private:
     OrchestraSynthAudioProcessor& processor;
-    MixerComponent mixer;
+    std::unique_ptr<MixerComponent> mixer;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OrchestraSynthAudioProcessorEditor)
 };
