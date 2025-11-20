@@ -16,6 +16,7 @@ public:
 private:
     OrchestraSynthAudioProcessor& processor;
     std::unique_ptr<MixerComponent> mixer;
+    juce::Label fallbackLabel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OrchestraSynthAudioProcessorEditor)
 };

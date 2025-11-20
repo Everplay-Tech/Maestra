@@ -36,6 +36,40 @@ private:
 
 OrchestraSynthApplication::~OrchestraSynthApplication() = default;
 
+bool OrchestraSynthApplication::validatePlatformSupport()
+{
+    const auto osName = juce::SystemStats::getOperatingSystemName();
+    const auto osType = juce::SystemStats::getOperatingSystemType();
+    const auto cpuVendor = juce::SystemStats::getCpuVendor();
+    const auto cpuSpeed = juce::SystemStats::getCpuSpeedInMegahertz();
+    const auto numCpus = juce::SystemStats::getNumCpus();
+    const auto juceVersion = juce::SystemStats::getJUCEVersion();
+
+    logger.log (Logger::LogLevel::Info,
+                "JUCE version: " + juceVersion
+                + ", OS: " + (osName.isNotEmpty() ? osName : juce::String ("Unknown"))
+                + ", CPU vendor: " + (cpuVendor.isNotEmpty() ? cpuVendor : juce::String ("Unknown"))
+                + ", cores: " + juce::String (numCpus)
+                + ", clock (MHz): " + juce::String (cpuSpeed));
+
+    bool osRecognised = osType != juce::SystemStats::OperatingSystemType::UnknownOS;
+    bool cpuAvailable = numCpus > 0;
+
+    if (! osRecognised)
+        logger.log (Logger::LogLevel::Warning,
+                    "JUCE could not recognise the current operating system; behaviour on newer/older hardware may be limited.");
+
+    if (! cpuAvailable)
+        logger.log (Logger::LogLevel::Warning,
+                    "JUCE did not report a valid CPU configuration; real-time audio performance cannot be guaranteed.");
+
+    if (cpuVendor.isEmpty())
+        logger.log (Logger::LogLevel::Warning,
+                    "CPU vendor information unavailable; consider updating firmware or platform diagnostics.");
+
+    return osRecognised && cpuAvailable;
+}
+
 const juce::String OrchestraSynthApplication::getApplicationName()
 {
     return "OrchestraSynth";
@@ -65,6 +99,20 @@ void OrchestraSynthApplication::initialise (const juce::String&)
     logger.log (Logger::LogLevel::Info, "OrchestraSynth starting up");
     crashReporter.installGlobalHandler();
     perfMon.beginSession();
+
+    if (! validatePlatformSupport())
+    {
+        juce::AlertWindow::showMessageBoxAsync (
+            juce::AlertWindow::WarningIcon,
+            "Unsupported Platform",
+            "OrchestraSynth could not verify JUCE compatibility on this hardware. "
+            "Please update system drivers or contact support before continuing.");
+
+        logger.log (Logger::LogLevel::Error,
+                    "Application shutdown triggered due to unverified JUCE platform compatibility.");
+        quit();
+        return;
+    }
 
     avAudioManager.start();
 

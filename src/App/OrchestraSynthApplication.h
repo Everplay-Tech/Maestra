@@ -28,6 +28,8 @@ private:
     class MainWindow;
     std::unique_ptr<MainWindow> mainWindow;
 
+    bool validatePlatformSupport();
+
     // shared systems
     Logger logger;
     CrashReporter crashReporter { logger };
