@@ -5,6 +5,41 @@ project(OrchestraSynth VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ===========================
+# Production Build Configuration
+# ===========================
+
+# Allow environment variables to override company/product settings
+set(ORCHESTRASYNTH_COMPANY_NAME "$ENV{COMPANY_NAME}" CACHE STRING "Company name")
+if(NOT ORCHESTRASYNTH_COMPANY_NAME)
+    set(ORCHESTRASYNTH_COMPANY_NAME "YourCompany")
+endif()
+
+set(ORCHESTRASYNTH_PRODUCT_NAME "$ENV{PRODUCT_NAME}" CACHE STRING "Product name")
+if(NOT ORCHESTRASYNTH_PRODUCT_NAME)
+    set(ORCHESTRASYNTH_PRODUCT_NAME "OrchestraSynth")
+endif()
+
+set(ORCHESTRASYNTH_BUNDLE_ID_PREFIX "$ENV{BUNDLE_ID_PREFIX}" CACHE STRING "Bundle ID prefix")
+if(NOT ORCHESTRASYNTH_BUNDLE_ID_PREFIX)
+    set(ORCHESTRASYNTH_BUNDLE_ID_PREFIX "com.yourcompany.orchestrasynth")
+endif()
+
+# Build number support (useful for CI/CD)
+set(ORCHESTRASYNTH_BUILD_NUMBER "$ENV{BUILD_NUMBER}" CACHE STRING "Build number")
+if(NOT ORCHESTRASYNTH_BUILD_NUMBER)
+    set(ORCHESTRASYNTH_BUILD_NUMBER "0")
+endif()
+
+# Full version string with build number
+set(ORCHESTRASYNTH_VERSION_FULL "${PROJECT_VERSION}.${ORCHESTRASYNTH_BUILD_NUMBER}")
+
+message(STATUS "OrchestraSynth Configuration:")
+message(STATUS "  Company:      ${ORCHESTRASYNTH_COMPANY_NAME}")
+message(STATUS "  Product:      ${ORCHESTRASYNTH_PRODUCT_NAME}")
+message(STATUS "  Version:      ${ORCHESTRASYNTH_VERSION_FULL}")
+message(STATUS "  Bundle ID:    ${ORCHESTRASYNTH_BUNDLE_ID_PREFIX}")
+
 # macOS deployment / arch model
 if(APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "Minimum OS X deployment version" FORCE)
@@ -54,9 +89,20 @@ set(ORCHESTRASYNTH_SHARED_SOURCES
 # ===========================
 
 juce_add_gui_app(OrchestraSynth
-    PRODUCT_NAME "OrchestraSynth"
-    COMPANY_NAME "YourCompany"
-    BUNDLE_ID    com.yourcompany.OrchestraSynth
+    PRODUCT_NAME "${ORCHESTRASYNTH_PRODUCT_NAME}"
+    COMPANY_NAME "${ORCHESTRASYNTH_COMPANY_NAME}"
+    BUNDLE_ID    "${ORCHESTRASYNTH_BUNDLE_ID_PREFIX}"
+    VERSION      "${ORCHESTRASYNTH_VERSION_FULL}"
+
+    # macOS specific metadata
+    COMPANY_COPYRIGHT "Copyright (c) 2024 ${ORCHESTRASYNTH_COMPANY_NAME}"
+    COMPANY_WEBSITE "https://yourcompany.com"
+
+    # Icon file (place icon at resources/icon.icns)
+    ICON_BIG "${CMAKE_SOURCE_DIR}/resources/icon.icns"
+
+    # File extensions/types this app can handle (if applicable)
+    # DOCUMENT_EXTENSIONS "orchproj"
 )
 
 # Ensure JuceHeader.h is generated before any JUCE-dependent compilation
@@ -91,18 +137,41 @@ endif()
 # ===========================
 
 juce_add_plugin(OrchestraSynthPlugin
-    COMPANY_NAME        "YourCompany"
-    BUNDLE_ID           com.yourcompany.OrchestraSynthPlugin
+    COMPANY_NAME        "${ORCHESTRASYNTH_COMPANY_NAME}"
+    BUNDLE_ID           "${ORCHESTRASYNTH_BUNDLE_ID_PREFIX}.plugin"
+    VERSION             "${ORCHESTRASYNTH_VERSION_FULL}"
+    COMPANY_COPYRIGHT   "Copyright (c) 2024 ${ORCHESTRASYNTH_COMPANY_NAME}"
+    COMPANY_WEBSITE     "https://yourcompany.com"
+
     IS_SYNTH            TRUE
     NEEDS_MIDI_INPUT    TRUE
     NEEDS_MIDI_OUTPUT   FALSE
     IS_MIDI_EFFECT      FALSE
+
     VST3                TRUE
     AU                  TRUE
     AU_SANDBOX_SAFE     TRUE
+
     COPY_PLUGIN_AFTER_BUILD TRUE
     FORMATS             VST3 AU
-    PRODUCT_NAME        "OrchestraSynth"
+    PRODUCT_NAME        "${ORCHESTRASYNTH_PRODUCT_NAME}"
+
+    # Plugin identifiers
+    PLUGIN_MANUFACTURER_CODE "Ymco"  # 4-character unique ID (customize this!)
+    PLUGIN_CODE             "Orch"  # 4-character unique ID (customize this!)
+
+    # VST3 specific
+    VST3_CATEGORIES     "Instrument|Synth"
+
+    # AU specific
+    AU_MAIN_TYPE        "kAudioUnitType_MusicDevice"
+    AU_SANDBOX_SAFE     TRUE
+
+    # Icon (same as standalone)
+    ICON_BIG            "${CMAKE_SOURCE_DIR}/resources/icon.icns"
+
+    # Description
+    DESCRIPTION         "Professional orchestral synthesizer with five orchestral sections"
 )
 
 juce_generate_juce_header(OrchestraSynthPlugin)
@@ -176,13 +245,37 @@ if(APPLE)
 
     # CPack DragNDrop DMG configuration
     set(CPACK_GENERATOR "DragNDrop")
-    set(CPACK_PACKAGE_NAME "OrchestraSynth")
-    set(CPACK_PACKAGE_VENDOR "YourCompany")
-    set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-    set(CPACK_PACKAGE_FILE_NAME "OrchestraSynth-${PROJECT_VERSION}-macOS-universal")
-    set(CPACK_DMG_FORMAT "UDZO")
-    set(CPACK_DMG_VOLUME_NAME "OrchestraSynth Installer")
+    set(CPACK_PACKAGE_NAME "${ORCHESTRASYNTH_PRODUCT_NAME}")
+    set(CPACK_PACKAGE_VENDOR "${ORCHESTRASYNTH_COMPANY_NAME}")
+    set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+    set(CPACK_PACKAGE_FILE_NAME "${ORCHESTRASYNTH_PRODUCT_NAME}-${PROJECT_VERSION}-macOS-universal")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Professional orchestral synthesizer with five orchestral sections")
+    set(CPACK_PACKAGE_HOMEPAGE_URL "https://yourcompany.com")
+
+    # DMG appearance and format
+    set(CPACK_DMG_FORMAT "UDZO")  # Compressed (UDZO) or UDBZ for better compression
+    set(CPACK_DMG_VOLUME_NAME "${ORCHESTRASYNTH_PRODUCT_NAME} Installer")
     set(CPACK_DMG_DS_STORE_SETUP_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/macos/dmg_setup.scpt")
+    set(CPACK_DMG_BACKGROUND_IMAGE "${CMAKE_SOURCE_DIR}/resources/dmg_background.png")
     set(CPACK_DMG_DISABLE_APPLICATIONS_SYMLINK ON)
+
+    # DMG license (optional - uncomment if you have a license file)
+    # set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt")
+
+    # Additional DMG metadata
+    set(CPACK_DMG_SLA_USE_RESOURCE_FILE_LICENSE OFF)
+
     include(CPack)
 endif()
+
+# ===========================
+# Development Notes
+# ===========================
+# Production checklist:
+# 1. Customize ORCHESTRASYNTH_COMPANY_NAME and ORCHESTRASYNTH_BUNDLE_ID_PREFIX
+# 2. Update PLUGIN_MANUFACTURER_CODE and PLUGIN_CODE to unique 4-char IDs
+# 3. Add icon file at resources/icon.icns (1024x1024 PNG converted to ICNS)
+# 4. Optional: Add DMG background at resources/dmg_background.png (540x380)
+# 5. Update copyright year and company website URL
+# 6. Set entitlements in config/entitlements/*.entitlements
+# 7. Configure code signing in config/build.env

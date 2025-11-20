@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Hardened Runtime Entitlements for Audio Plugins (VST3/AU) -->
+
+    <!-- Required for audio processing within DAW host -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+
+    <!-- Required for MIDI device access -->
+    <key>com.apple.security.device.usb</key>
+    <true/>
+
+    <!-- Bluetooth MIDI support -->
+    <key>com.apple.security.device.bluetooth</key>
+    <true/>
+
+    <!-- Allow unsigned executable memory (may be required by some DAW hosts) -->
+    <!-- Set to true only if DAW compatibility issues arise -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <false/>
+
+    <!-- Disable library validation (often required for plugins in third-party hosts) -->
+    <!-- Set to true if plugin fails to load in certain DAWs -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- Allow JIT compilation -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <false/>
+
+    <!-- DYLD environment variables -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <false/>
+
+    <!-- Network client (for license checking or analytics) -->
+    <key>com.apple.security.network.client</key>
+    <false/>
+
+    <!-- User selected file access for presets -->
+    <key>com.apple.security.files.user-selected.read-only</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+
+    <!-- Downloads folder access -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+
+    <!-- Music folder access for sample libraries -->
+    <key>com.apple.security.assets.music.read-only</key>
+    <true/>
+</dict>
+</plist>

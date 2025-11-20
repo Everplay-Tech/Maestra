@@ -1,0 +1,48 @@
+# Build directories
+build/
+dist/
+*.app
+*.vst3
+*.component
+*.dmg
+*.pkg
+
+# Credentials and secrets
+config/build.env
+*.p12
+*.provisionprofile
+*.mobileprovision
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.ccls-cache/
+
+# Xcode
+*.xcodeproj
+xcuserdata/
+*.xcworkspace
+
+# Logs
+*.log
+build_info.txt
+
+# Temporary files
+*.tmp
+.cache/
