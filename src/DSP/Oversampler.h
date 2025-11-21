@@ -16,10 +16,11 @@
 class Oversampler
 {
 public:
-    explicit Oversampler (Logger& loggerIn)
-        : logger (loggerIn)
-    {
-    }
+    explicit Oversampler (::Logger& loggerIn);
+    ...
+private:
+    ::Logger& logger;
+};
 
     Oversampler (const Oversampler&) = delete;
     Oversampler& operator= (const Oversampler&) = delete;
