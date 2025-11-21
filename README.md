@@ -22,6 +22,27 @@ cd OrchestraSynth
 
 **Note:** JUCE 7.0.12 is automatically downloaded by CMake's FetchContent during the build process. No manual setup required.
 
+### Apple M5 Chip Support
+
+If you're building on a new **M5 chip MacBook** and encounter JUCE build failures, use our specialized M5 build script:
+
+```bash
+# Automatic M5-optimized build (recommended)
+./scripts/macos/setup_m5_build.sh --upgrade-juce --clean
+
+# Quick JUCE version upgrade only
+./scripts/macos/quick_juce_upgrade.sh 8.0.4
+```
+
+The M5 setup script:
+- ✅ Upgrades JUCE to 8.x for M5 compatibility
+- ✅ Applies M5-specific compiler optimizations
+- ✅ Validates prerequisites and system configuration
+- ✅ Handles offline builds and network issues
+- ✅ Generates detailed diagnostic logs
+
+See [docs/M5_BUILD_GUIDE.md](docs/M5_BUILD_GUIDE.md) for complete M5 build documentation.
+
 ## 2. Development Build (Quick Start)
 
 For a development build with universal binary and DMG:
@@ -108,6 +129,7 @@ See [docs/VALIDATION_PROCEDURES.md](docs/VALIDATION_PROCEDURES.md) for complete 
 
 ## Documentation
 
+- **M5 Build Guide:** [docs/M5_BUILD_GUIDE.md](docs/M5_BUILD_GUIDE.md) - **NEW!** Building on Apple M5 chip MacBooks
 - **Validation Procedures:** [docs/VALIDATION_PROCEDURES.md](docs/VALIDATION_PROCEDURES.md) - **NEW!** Automated validation and production readiness
 - **Production Packaging:** [docs/PRODUCTION_PACKAGING.md](docs/PRODUCTION_PACKAGING.md) - Complete guide for enterprise deployment
 - **Apple Packaging:** [docs/APPLE_PACKAGING.md](docs/APPLE_PACKAGING.md) - Notarization and verification
@@ -133,6 +155,8 @@ OrchestraSynth/
 ├── scripts/macos/               # Build automation
 │   ├── build_and_package.sh    # Development build
 │   ├── production_build.sh     # Production build pipeline
+│   ├── setup_m5_build.sh       # M5 chip build setup (NEW!)
+│   ├── quick_juce_upgrade.sh   # Quick JUCE upgrade (NEW!)
 │   ├── codesign.sh             # Code signing
 │   ├── notarize.sh             # Apple notarization
 │   ├── build_pkg.sh            # PKG installer creation
@@ -143,6 +167,7 @@ OrchestraSynth/
 │   ├── validation.yml          # Automated validation
 │   └── release.yml             # Release automation
 ├── docs/                        # Documentation
+│   ├── M5_BUILD_GUIDE.md       # M5 chip build guide (NEW!)
 │   ├── VALIDATION_PROCEDURES.md # Validation guide (NEW!)
 │   ├── PRODUCTION_PACKAGING.md
 │   ├── APPLE_PACKAGING.md
