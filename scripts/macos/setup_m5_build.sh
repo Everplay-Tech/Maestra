@@ -17,6 +17,7 @@ set -euo pipefail
 #   --diagnose               Run diagnostics only, don't build
 #   --force                  Force rebuild even if checks pass
 #   --skip-build             Setup only, don't build
+#   --debug                  Enable debug output
 #   --help                   Show this help message
 #
 # Environment Variables:
@@ -46,6 +47,7 @@ CLEAN_BUILD=0
 DIAGNOSE_ONLY=0
 FORCE_BUILD=0
 SKIP_BUILD=0
+DEBUG_MODE=0
 JUCE_VERSION="${JUCE_VERSION:-8.0.4}"  # M5-compatible version
 MIN_CMAKE_VERSION="3.22.0"
 MIN_XCODE_VERSION="15.0"
@@ -91,14 +93,51 @@ log_info() {
     log "${BLUE}ℹ${NC}  $1"
 }
 
+log_debug() {
+    if [[ $DEBUG_MODE -eq 1 ]]; then
+        log "${MAGENTA}[DEBUG]${NC} $1"
+    fi
+}
+
 version_compare() {
+    # Compare version strings - returns -1 if $1 < $2, 0 if equal, 1 if $1 > $2
     if [[ "$1" == "$2" ]]; then
         echo "0"
-    elif [[ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" == "$1" ]]; then
-        echo "-1"
-    else
-        echo "1"
+        return
     fi
+
+    # Try sort -V first (GNU sort)
+    local sorted=$(printf '%s\n' "$1" "$2" | sort -V 2>/dev/null | head -n1)
+    if [[ $? -eq 0 && -n "$sorted" ]]; then
+        if [[ "$sorted" == "$1" ]]; then
+            echo "-1"
+        else
+            echo "1"
+        fi
+        return
+    fi
+
+    # Fallback to manual version comparison for BSD sort
+    local ver1=(${1//./ })
+    local ver2=(${2//./ })
+    local len=${#ver1[@]}
+    if [[ ${#ver2[@]} -gt $len ]]; then
+        len=${#ver2[@]}
+    fi
+
+    for ((i=0; i<len; i++)); do
+        local num1=${ver1[i]:-0}
+        local num2=${ver2[i]:-0}
+        if [[ $num1 -lt $num2 ]]; then
+            echo "-1"
+            return
+        elif [[ $num1 -gt $num2 ]]; then
+            echo "1"
+            return
+        fi
+    done
+
+    echo "0"
 }
 
 # ============================================================================
@@ -130,6 +169,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-build)
             SKIP_BUILD=1
+            shift
+            ;;
+        --debug)
+            DEBUG_MODE=1
+            set -x  # Enable bash debug mode
             shift
             ;;
         --help)
@@ -200,15 +244,22 @@ ERRORS=0
 WARNINGS=0
 
 # Check Xcode Command Line Tools
+log_debug "Checking for xcodebuild..."
 if ! command -v xcodebuild &> /dev/null; then
     log_error "Xcode Command Line Tools not found"
     log_info "Install with: xcode-select --install"
     ((ERRORS++))
 else
+    log_debug "xcodebuild found, getting version..."
     XCODE_VERSION=$(xcodebuild -version 2>/dev/null | head -1 | awk '{print $2}')
+    log_debug "Xcode version: ${XCODE_VERSION}"
     log_success "Xcode Command Line Tools: ${XCODE_VERSION}"
 
-    if [[ $(version_compare "$XCODE_VERSION" "$MIN_XCODE_VERSION") -lt 0 ]]; then
+    log_debug "Comparing Xcode version ${XCODE_VERSION} with minimum ${MIN_XCODE_VERSION}..."
+    XCODE_CMP=$(version_compare "$XCODE_VERSION" "$MIN_XCODE_VERSION")
+    log_debug "Version comparison result: ${XCODE_CMP}"
+
+    if [[ $XCODE_CMP -lt 0 ]]; then
         log_warning "Xcode ${XCODE_VERSION} is older than recommended ${MIN_XCODE_VERSION}"
         log_info "Update Xcode for best M5 chip support"
         ((WARNINGS++))
@@ -216,15 +267,22 @@ else
 fi
 
 # Check CMake
+log_debug "Checking for cmake..."
 if ! command -v cmake &> /dev/null; then
     log_error "CMake not found"
     log_info "Install with: brew install cmake"
     ((ERRORS++))
 else
+    log_debug "cmake found, getting version..."
     CMAKE_VERSION=$(cmake --version | head -1 | awk '{print $3}')
+    log_debug "CMake version: ${CMAKE_VERSION}"
     log_success "CMake: ${CMAKE_VERSION}"
 
-    if [[ $(version_compare "$CMAKE_VERSION" "$MIN_CMAKE_VERSION") -lt 0 ]]; then
+    log_debug "Comparing CMake version ${CMAKE_VERSION} with minimum ${MIN_CMAKE_VERSION}..."
+    CMAKE_CMP=$(version_compare "$CMAKE_VERSION" "$MIN_CMAKE_VERSION")
+    log_debug "Version comparison result: ${CMAKE_CMP}"
+
+    if [[ $CMAKE_CMP -lt 0 ]]; then
         log_error "CMake ${CMAKE_VERSION} is older than required ${MIN_CMAKE_VERSION}"
         log_info "Update with: brew upgrade cmake"
         ((ERRORS++))
