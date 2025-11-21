@@ -402,14 +402,14 @@ if(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
     check_cxx_compiler_flag("-mcpu=apple-m5" COMPILER_SUPPORTS_M5)
 
     if(COMPILER_SUPPORTS_M5)
-        message(STATUS "  ✓ M5-specific optimizations enabled")
+        message(STATUS "  [OK] M5-specific optimizations enabled")
         foreach(target OrchestraSynth OrchestraSynthPlugin)
             if(TARGET ${target})
                 target_compile_options(${target} PRIVATE ${M5_COMPILE_FLAGS})
             endif()
         endforeach()
-    else
-        message(STATUS "  ⚠ Compiler doesn't support M5-specific flags, using general ARM64 optimizations")
+    else()
+        message(STATUS "  [WARN] Compiler doesn't support M5-specific flags, using general ARM64 optimizations")
         foreach(target OrchestraSynth OrchestraSynthPlugin)
             if(TARGET ${target})
                 target_compile_options(${target} PRIVATE -mcpu=apple-latest)
@@ -430,8 +430,8 @@ if(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
     # Link-time optimizations
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 
-    message(STATUS "  ✓ NEON optimizations enabled")
-    message(STATUS "  ✓ Link-time optimization enabled")
+    message(STATUS "  [OK] NEON optimizations enabled")
+    message(STATUS "  [OK] Link-time optimization enabled")
 endif()
 EOF
 
