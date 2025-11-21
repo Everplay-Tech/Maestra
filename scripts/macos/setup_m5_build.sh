@@ -53,6 +53,9 @@ MIN_CMAKE_VERSION="3.22.0"
 MIN_XCODE_VERSION="15.0"
 MIN_MACOS_VERSION="14.0"
 
+# Error trap for debugging
+trap 'echo -e "${RED}✗${NC} Script failed at line $LINENO with exit code $?" | tee -a "$LOG_FILE"; exit 1' ERR
+
 # ============================================================================
 # Utility Functions
 # ============================================================================
@@ -101,26 +104,39 @@ log_debug() {
 
 version_compare() {
     # Compare version strings - returns -1 if $1 < $2, 0 if equal, 1 if $1 > $2
-    if [[ "$1" == "$2" ]]; then
+    # This function is safe with set -e
+
+    # Handle empty or invalid inputs
+    if [[ -z "$1" || -z "$2" ]]; then
         echo "0"
-        return
+        return 0
     fi
 
-    # Try sort -V first (GNU sort)
-    local sorted=$(printf '%s\n' "$1" "$2" | sort -V 2>/dev/null | head -n1)
-    if [[ $? -eq 0 && -n "$sorted" ]]; then
+    if [[ "$1" == "$2" ]]; then
+        echo "0"
+        return 0
+    fi
+
+    # Try sort -V first (GNU sort) - use explicit error handling
+    local sorted=""
+    sorted=$(printf '%s\n' "$1" "$2" | sort -V 2>/dev/null | head -n1) || sorted=""
+
+    if [[ -n "$sorted" ]]; then
         if [[ "$sorted" == "$1" ]]; then
             echo "-1"
         else
             echo "1"
         fi
-        return
+        return 0
     fi
 
     # Fallback to manual version comparison for BSD sort
-    local ver1=(${1//./ })
-    local ver2=(${2//./ })
+    # Convert version strings to arrays
+    local IFS='.'
+    local ver1=($1)
+    local ver2=($2)
     local len=${#ver1[@]}
+
     if [[ ${#ver2[@]} -gt $len ]]; then
         len=${#ver2[@]}
     fi
@@ -128,16 +144,26 @@ version_compare() {
     for ((i=0; i<len; i++)); do
         local num1=${ver1[i]:-0}
         local num2=${ver2[i]:-0}
+
+        # Remove non-numeric characters for comparison
+        num1=${num1//[^0-9]/}
+        num2=${num2//[^0-9]/}
+
+        # Default to 0 if empty after cleaning
+        num1=${num1:-0}
+        num2=${num2:-0}
+
         if [[ $num1 -lt $num2 ]]; then
             echo "-1"
-            return
+            return 0
         elif [[ $num1 -gt $num2 ]]; then
             echo "1"
-            return
+            return 0
         fi
     done
 
     echo "0"
+    return 0
 }
 
 # ============================================================================
@@ -243,6 +269,8 @@ log_section "Prerequisite Validation"
 ERRORS=0
 WARNINGS=0
 
+log_debug "Starting prerequisite checks..."
+
 # Check Xcode Command Line Tools
 log_debug "Checking for xcodebuild..."
 if ! command -v xcodebuild &> /dev/null; then
@@ -251,17 +279,31 @@ if ! command -v xcodebuild &> /dev/null; then
     ((ERRORS++))
 else
     log_debug "xcodebuild found, getting version..."
-    XCODE_VERSION=$(xcodebuild -version 2>/dev/null | head -1 | awk '{print $2}')
-    log_debug "Xcode version: ${XCODE_VERSION}"
-    log_success "Xcode Command Line Tools: ${XCODE_VERSION}"
+    # Get Xcode version with better error handling
+    if XCODE_VERSION=$(xcodebuild -version 2>&1 | head -1 | awk '{print $2}'); then
+        log_debug "Xcode version: ${XCODE_VERSION}"
 
-    log_debug "Comparing Xcode version ${XCODE_VERSION} with minimum ${MIN_XCODE_VERSION}..."
-    XCODE_CMP=$(version_compare "$XCODE_VERSION" "$MIN_XCODE_VERSION")
-    log_debug "Version comparison result: ${XCODE_CMP}"
+        # Validate we got a version number
+        if [[ -n "$XCODE_VERSION" && "$XCODE_VERSION" =~ ^[0-9]+\.[0-9]+ ]]; then
+            log_success "Xcode Command Line Tools: ${XCODE_VERSION}"
 
-    if [[ $XCODE_CMP -lt 0 ]]; then
-        log_warning "Xcode ${XCODE_VERSION} is older than recommended ${MIN_XCODE_VERSION}"
-        log_info "Update Xcode for best M5 chip support"
+            log_debug "Comparing Xcode version ${XCODE_VERSION} with minimum ${MIN_XCODE_VERSION}..."
+            XCODE_CMP=$(version_compare "$XCODE_VERSION" "$MIN_XCODE_VERSION") || XCODE_CMP="-1"
+            log_debug "Version comparison result: ${XCODE_CMP}"
+
+            if [[ $XCODE_CMP -lt 0 ]]; then
+                log_warning "Xcode ${XCODE_VERSION} is older than recommended ${MIN_XCODE_VERSION}"
+                log_info "Update Xcode for best M5 chip support"
+                ((WARNINGS++))
+            fi
+        else
+            log_warning "Could not parse Xcode version: '${XCODE_VERSION}'"
+            log_success "Xcode Command Line Tools: present (version unknown)"
+            ((WARNINGS++))
+        fi
+    else
+        log_warning "xcodebuild command failed - Command Line Tools may need reinstalling"
+        log_info "Try: sudo xcode-select --reset"
         ((WARNINGS++))
     fi
 fi
@@ -274,25 +316,42 @@ if ! command -v cmake &> /dev/null; then
     ((ERRORS++))
 else
     log_debug "cmake found, getting version..."
-    CMAKE_VERSION=$(cmake --version | head -1 | awk '{print $3}')
-    log_debug "CMake version: ${CMAKE_VERSION}"
-    log_success "CMake: ${CMAKE_VERSION}"
+    # Get CMake version with better error handling
+    if CMAKE_VERSION=$(cmake --version 2>&1 | head -1 | awk '{print $3}'); then
+        log_debug "CMake version: ${CMAKE_VERSION}"
 
-    log_debug "Comparing CMake version ${CMAKE_VERSION} with minimum ${MIN_CMAKE_VERSION}..."
-    CMAKE_CMP=$(version_compare "$CMAKE_VERSION" "$MIN_CMAKE_VERSION")
-    log_debug "Version comparison result: ${CMAKE_CMP}"
+        # Validate we got a version number
+        if [[ -n "$CMAKE_VERSION" && "$CMAKE_VERSION" =~ ^[0-9]+\.[0-9]+ ]]; then
+            log_success "CMake: ${CMAKE_VERSION}"
 
-    if [[ $CMAKE_CMP -lt 0 ]]; then
-        log_error "CMake ${CMAKE_VERSION} is older than required ${MIN_CMAKE_VERSION}"
-        log_info "Update with: brew upgrade cmake"
+            log_debug "Comparing CMake version ${CMAKE_VERSION} with minimum ${MIN_CMAKE_VERSION}..."
+            CMAKE_CMP=$(version_compare "$CMAKE_VERSION" "$MIN_CMAKE_VERSION") || CMAKE_CMP="-1"
+            log_debug "Version comparison result: ${CMAKE_CMP}"
+
+            if [[ $CMAKE_CMP -lt 0 ]]; then
+                log_error "CMake ${CMAKE_VERSION} is older than required ${MIN_CMAKE_VERSION}"
+                log_info "Update with: brew upgrade cmake"
+                ((ERRORS++))
+            fi
+        else
+            log_warning "Could not parse CMake version: '${CMAKE_VERSION}'"
+            log_success "CMake: present (version unknown)"
+            ((WARNINGS++))
+        fi
+    else
+        log_error "cmake command failed"
         ((ERRORS++))
     fi
 fi
 
 # Check Ninja (optional but recommended)
 if command -v ninja &> /dev/null; then
-    NINJA_VERSION=$(ninja --version)
-    log_success "Ninja: ${NINJA_VERSION} (recommended)"
+    if NINJA_VERSION=$(ninja --version 2>&1); then
+        log_success "Ninja: ${NINJA_VERSION} (recommended)"
+    else
+        log_warning "Ninja found but version check failed"
+        ((WARNINGS++))
+    fi
 else
     log_warning "Ninja not found (optional but recommended for faster builds)"
     log_info "Install with: brew install ninja"
@@ -305,18 +364,29 @@ if ! command -v git &> /dev/null; then
     log_info "Install Xcode Command Line Tools: xcode-select --install"
     ((ERRORS++))
 else
-    GIT_VERSION=$(git --version | awk '{print $3}')
-    log_success "Git: ${GIT_VERSION}"
+    if GIT_VERSION=$(git --version 2>&1 | awk '{print $3}'); then
+        log_success "Git: ${GIT_VERSION}"
+    else
+        log_warning "Git found but version check failed"
+        ((WARNINGS++))
+    fi
 fi
 
 # Check available disk space
-AVAILABLE_SPACE=$(df -h "$ROOT_DIR" | awk 'NR==2 {print $4}')
-log_info "Available disk space: ${AVAILABLE_SPACE}"
+if AVAILABLE_SPACE=$(df -h "$ROOT_DIR" 2>&1 | awk 'NR==2 {print $4}'); then
+    log_info "Available disk space: ${AVAILABLE_SPACE}"
+else
+    log_warning "Could not check disk space"
+fi
 
 # Check for Homebrew (helpful but not required)
 if command -v brew &> /dev/null; then
-    BREW_VERSION=$(brew --version | head -1 | awk '{print $2}')
-    log_success "Homebrew: ${BREW_VERSION}"
+    if BREW_VERSION=$(brew --version 2>&1 | head -1 | awk '{print $2}'); then
+        log_success "Homebrew: ${BREW_VERSION}"
+    else
+        log_warning "Homebrew found but version check failed"
+        ((WARNINGS++))
+    fi
 else
     log_warning "Homebrew not found (recommended for easy dependency management)"
     log_info "Install from: https://brew.sh"
