@@ -72,6 +72,8 @@ set(ORCHESTRASYNTH_SHARED_SOURCES
     src/DSP/StabilityGuardian.h
     src/DSP/MacroModulationMatrix.h
     src/DSP/PresetMorphingEngine.h
+    src/DSP/SpectralIntelligence.h
+    src/DSP/HarmonicEnhancer.h
 
     src/Systems/PresetManager.h
     src/Systems/PerformanceMonitor.h
