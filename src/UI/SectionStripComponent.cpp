@@ -8,41 +8,98 @@ SectionStripComponent::SectionStripComponent (OrchestraSynthEngine& engineIn,
       title (titleIn)
 {
     titleLabel.setText (title, juce::dontSendNotification);
-    titleLabel.setJustificationType (juce::Justification::centred);
+    titleLabel.setJustificationType (juce::Justification::centredLeft);
+    titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (titleLabel);
 
-    gainSlider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
-    gainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 48, 20);
+    voiceLabel.setJustificationType (juce::Justification::centredRight);
+    voiceLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    voiceLabel.setText ("0 voices", juce::dontSendNotification);
+    addAndMakeVisible (voiceLabel);
+
+    articulationLabel.setText ("Articulation", juce::dontSendNotification);
+    articulationLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    articulationLabel.setJustificationType (juce::Justification::centredLeft);
+    addAndMakeVisible (articulationLabel);
+
+    articulationBadge.setColour (juce::Label::textColourId, juce::Colours::white);
+    articulationBadge.setColour (juce::Label::backgroundColourId, juce::Colours::darkgrey.brighter (0.2f));
+    articulationBadge.setJustificationType (juce::Justification::centred);
+    articulationBadge.setText ("Sustain", juce::dontSendNotification);
+    articulationBadge.setOpaque (true);
+    addAndMakeVisible (articulationBadge);
+
+    auto prepareRotarySlider = [this] (juce::Slider& slider,
+                                       juce::Label& label,
+                                       const juce::String& name,
+                                       double min, double max, double step,
+                                       double skew = 1.0)
+    {
+        slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
+        slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 64, 18);
+        slider.setRange (min, max, step);
+        if (! juce::approximatelyEqual (skew, 1.0))
+            slider.setSkewFactorFromMidPoint (skew);
+        slider.addListener (this);
+        slider.setName (name);
+        slider.setWantsKeyboardFocus (false);
+        addAndMakeVisible (slider);
+
+        label.setText (name, juce::dontSendNotification);
+        label.setJustificationType (juce::Justification::centred);
+        label.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+        addAndMakeVisible (label);
+    };
+
+    gainSlider.setSliderStyle (juce::Slider::LinearVertical);
     gainSlider.setRange (0.0, 1.5, 0.01);
-    gainSlider.setName ("Gain");
+    gainSlider.textFromValueFunction = [] (double value)
+    {
+        const double db = juce::Decibels::gainToDecibels ((float) value, -36.0f);
+        return juce::String (db, 1) + " dB";
+    };
+    gainSlider.valueFromTextFunction = [] (const juce::String& text)
+    {
+        auto trimmed = text.trimEnd();
+        if (trimmed.endsWithIgnoreCase ("dB"))
+            trimmed = trimmed.dropLastCharacters (2).trimEnd();
+        const double db = trimmed.getDoubleValue();
+        return juce::Decibels::decibelsToGain (db);
+    };
     gainSlider.addListener (this);
+    gainSlider.setName ("Gain");
+    gainSlider.setWantsKeyboardFocus (false);
     addAndMakeVisible (gainSlider);
 
+    gainLabel.setText ("Gain (dB)", juce::dontSendNotification);
+    gainLabel.setJustificationType (juce::Justification::centred);
+    gainLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible (gainLabel);
+
     panSlider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
-    panSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 48, 20);
-    panSlider.setRange (-1.0, 1.0, 0.01);
-    panSlider.setName ("Pan");
+    panSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 56, 18);
+    panSlider.setRange (-100.0, 100.0, 1.0);
+    panSlider.setTextValueSuffix (" %");
     panSlider.addListener (this);
+    panSlider.setName ("Pan");
+    panSlider.setWantsKeyboardFocus (false);
     addAndMakeVisible (panSlider);
 
-    cutoffSlider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
-    cutoffSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 20);
-    cutoffSlider.setRange (500.0, 20000.0, 1.0);
-    cutoffSlider.setSkewFactorFromMidPoint (2000.0);
-    cutoffSlider.setName ("Cutoff");
-    cutoffSlider.addListener (this);
-    addAndMakeVisible (cutoffSlider);
+    panLabel.setText ("Pan %", juce::dontSendNotification);
+    panLabel.setJustificationType (juce::Justification::centred);
+    panLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible (panLabel);
 
-    reverbSlider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
-    reverbSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 48, 20);
-    reverbSlider.setRange (0.0, 1.0, 0.01);
-    reverbSlider.setName ("Rev");
-    reverbSlider.addListener (this);
-    addAndMakeVisible (reverbSlider);
+    prepareRotarySlider (cutoffSlider,   cutoffLabel,   "Cutoff Hz", 200.0, 20000.0, 1.0, 2000.0);
+    prepareRotarySlider (resonanceSlider, resonanceLabel, "Resonance", 0.1, 1.5, 0.01);
+    prepareRotarySlider (attackSlider,   attackLabel,   "Attack ms", 1.0, 2000.0, 1.0, 40.0);
+    prepareRotarySlider (releaseSlider,  releaseLabel,  "Release ms", 10.0, 5000.0, 1.0, 200.0);
+    prepareRotarySlider (reverbSlider,   reverbLabel,   "Reverb Send", 0.0, 1.0, 0.01);
 
     articulationBox.addItem ("Sustain", 1);
     articulationBox.addItem ("Staccato", 2);
     articulationBox.addItem ("Legato", 3);
+    articulationBox.setWantsKeyboardFocus (false);
     articulationBox.onChange = [this]
     {
         auto p = engine.getSectionSnapshot (section).params;
@@ -66,27 +123,39 @@ SectionStripComponent::~SectionStripComponent()
     gainSlider.removeListener (this);
     panSlider.removeListener (this);
     cutoffSlider.removeListener (this);
+    resonanceSlider.removeListener (this);
+    attackSlider.removeListener (this);
+    releaseSlider.removeListener (this);
     reverbSlider.removeListener (this);
 }
 
 void SectionStripComponent::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colours::darkgrey.darker (0.3f));
+    auto bounds = getLocalBounds().toFloat();
+
+    auto baseColour = juce::Colours::darkgrey.darker (0.2f);
+    if (typingHighlight)
+        baseColour = baseColour.brighter (0.2f);
+
+    g.setColour (baseColour);
+    g.fillRoundedRectangle (bounds, 6.0f);
 
     // Border
     g.setColour (juce::Colours::grey);
-    g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (2.0f), 4.0f, 1.0f);
+    g.drawRoundedRectangle (bounds.reduced (1.5f), 6.0f, 1.0f);
 
-    // Meter region: right side vertical bar
-    auto bounds = getLocalBounds().reduced (6);
-    auto meterWidth = 16;
-    auto meterArea = bounds.removeFromRight (meterWidth);
+    auto content = getLocalBounds().reduced (6);
 
-    g.setColour (juce::Colours::black);
-    g.fillRect (meterArea);
+    // Meter region on the right
+    auto meterWidth = 18;
+    auto meterArea = content.removeFromRight (meterWidth);
+    meterArea.reduce (2, 4);
+
+    g.setColour (juce::Colours::black.withAlpha (0.4f));
+    g.fillRoundedRectangle (meterArea.toFloat(), 3.0f);
 
     const auto level = juce::jlimit (0.0f, 1.0f, meterLevel);
-    auto fillHeight = (int) (meterArea.getHeight() * level);
+    auto fillHeight = (int) std::round (meterArea.getHeight() * level);
     auto filled = meterArea.withHeight (fillHeight).withY (meterArea.getBottom() - fillHeight);
 
     juce::Colour low = juce::Colours::green;
@@ -94,27 +163,72 @@ void SectionStripComponent::paint (juce::Graphics& g)
     juce::Colour c = low.interpolatedWith (high, level);
 
     g.setColour (c);
-    g.fillRect (filled);
+    g.fillRoundedRectangle (filled.toFloat(), 2.0f);
 }
 
 void SectionStripComponent::resized()
 {
     auto area = getLocalBounds().reduced (6);
 
-    auto topHeight = 24;
-    titleLabel.setBounds (area.removeFromTop (topHeight));
+    auto header = area.removeFromTop (28);
+    titleLabel.setBounds (header.removeFromLeft (header.getWidth() * 2 / 3));
+    voiceLabel.setBounds (header);
 
-    auto artHeight = 24;
-    articulationBox.setBounds (area.removeFromTop (artHeight).reduced (2, 0));
+    auto articulationRow = area.removeFromTop (28);
+    articulationLabel.setBounds (articulationRow.removeFromLeft (articulationRow.getWidth() / 2));
+    articulationBox.setBounds (articulationRow.removeFromLeft (articulationRow.getWidth() - 80).reduced (2, 0));
+    articulationBadge.setBounds (articulationRow.reduced (2));
 
-    // Leave meter strip on the right
-    area.removeFromRight (20);
+    auto meterWidth = 20;
+    area.removeFromRight (meterWidth);
 
-    auto rowHeight = area.getHeight() / 4;
-    gainSlider.setBounds (area.removeFromTop (rowHeight).reduced (4));
-    panSlider.setBounds (area.removeFromTop (rowHeight).reduced (4));
-    cutoffSlider.setBounds (area.removeFromTop (rowHeight).reduced (4));
-    reverbSlider.setBounds (area.removeFromTop (rowHeight).reduced (4));
+    auto gainArea = area.removeFromLeft (70);
+    auto gainLabelHeight = 18;
+    auto gainLabelArea = gainArea.removeFromBottom (gainLabelHeight);
+    gainSlider.setBounds (gainArea);
+    gainLabel.setBounds (gainLabelArea);
+
+    auto knobArea = area;
+    auto knobHeight = knobArea.getHeight() / 2;
+
+    auto layoutKnobRow = [] (juce::Rectangle<int> row,
+                             juce::Slider& aSlider, juce::Label& aLabel,
+                             juce::Slider& bSlider, juce::Label& bLabel,
+                             juce::Slider& cSlider, juce::Label& cLabel)
+    {
+        auto slotWidth = row.getWidth() / 3;
+        auto placeControl = [] (juce::Rectangle<int> slot,
+                                juce::Slider& slider,
+                                juce::Label& label)
+        {
+            const int labelHeight = 16;
+            label.setBounds (slot.removeFromBottom (labelHeight));
+            slider.setBounds (slot.reduced (2));
+        };
+
+        placeControl (row.removeFromLeft (slotWidth), aSlider, aLabel);
+        placeControl (row.removeFromLeft (slotWidth), bSlider, bLabel);
+        placeControl (row, cSlider, cLabel);
+    };
+
+    layoutKnobRow (knobArea.removeFromTop (knobHeight),
+                   cutoffSlider, cutoffLabel,
+                   resonanceSlider, resonanceLabel,
+                   panSlider, panLabel);
+
+    layoutKnobRow (knobArea,
+                   attackSlider, attackLabel,
+                   releaseSlider, releaseLabel,
+                   reverbSlider, reverbLabel);
+}
+
+void SectionStripComponent::setTypingHighlight (bool shouldHighlight)
+{
+    if (typingHighlight == shouldHighlight)
+        return;
+
+    typingHighlight = shouldHighlight;
+    repaint();
 }
 
 void SectionStripComponent::sliderValueChanged (juce::Slider* slider)
@@ -124,9 +238,15 @@ void SectionStripComponent::sliderValueChanged (juce::Slider* slider)
     if (slider == &gainSlider)
         p.gain = (float) gainSlider.getValue();
     else if (slider == &panSlider)
-        p.pan = (float) panSlider.getValue();
+        p.pan = (float) (panSlider.getValue() / 100.0);
     else if (slider == &cutoffSlider)
         p.cutoff = (float) cutoffSlider.getValue();
+    else if (slider == &resonanceSlider)
+        p.resonance = (float) resonanceSlider.getValue();
+    else if (slider == &attackSlider)
+        p.attackMs = (float) attackSlider.getValue();
+    else if (slider == &releaseSlider)
+        p.releaseMs = (float) releaseSlider.getValue();
     else if (slider == &reverbSlider)
         p.reverbSend = (float) reverbSlider.getValue();
 
@@ -157,13 +277,27 @@ void SectionStripComponent::syncUIWithEngine()
     };
 
     setIfDifferent (gainSlider,   p.gain);
-    setIfDifferent (panSlider,    p.pan);
+    setIfDifferent (panSlider,    p.pan * 100.0);
     setIfDifferent (cutoffSlider, p.cutoff);
+    setIfDifferent (resonanceSlider, p.resonance);
+    setIfDifferent (attackSlider, p.attackMs);
+    setIfDifferent (releaseSlider, p.releaseMs);
     setIfDifferent (reverbSlider, p.reverbSend);
 
     const int artId = p.articulationIndex + 1;
     if (articulationBox.getSelectedId() != artId)
         articulationBox.setSelectedId (artId, juce::dontSendNotification);
+
+    articulationBadge.setText (articulationBox.getText(), juce::dontSendNotification);
+
+    const auto voices = s.activeVoices;
+    if (voices != lastActiveVoices || p.maxVoices != lastVoiceCapacity)
+    {
+        lastActiveVoices = voices;
+        lastVoiceCapacity = p.maxVoices;
+        voiceLabel.setText (juce::String (voices) + " / " + juce::String (p.maxVoices) + " voices",
+                            juce::dontSendNotification);
+    }
 }
 
 void SectionStripComponent::updateMeterFromSnapshot (const OrchestraSynthEngine::SectionStateSnapshot& s)
