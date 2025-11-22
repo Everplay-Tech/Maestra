@@ -67,6 +67,11 @@ set(ORCHESTRASYNTH_SHARED_SOURCES
     src/DSP/Oversampler.h
     src/DSP/ConvolutionEngine.h
     src/DSP/ImpulseResponseLoader.h
+    src/DSP/QuantumDSPCore.h
+    src/DSP/NeuralWaveguideProcessor.h
+    src/DSP/StabilityGuardian.h
+    src/DSP/MacroModulationMatrix.h
+    src/DSP/PresetMorphingEngine.h
 
     src/Systems/PresetManager.h
     src/Systems/PerformanceMonitor.h
